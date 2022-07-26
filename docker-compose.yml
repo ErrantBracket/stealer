@@ -1,0 +1,20 @@
+version: '3'
+services:
+  app:
+    container_name: app-stealer
+    restart: always
+    build: ./api/
+    ports:
+      - '3000:3000'     
+    links:
+      - mongo
+    environment:
+      PORT: "3000"
+      DB_URL: "mongodb://mongo:27017/note-taker"
+  mongo:
+    container_name: mongo-stealer
+    image: mongo
+    volumes:
+      - ./data:/data/db
+    ports:
+      - '27017:27017'
