@@ -1,4 +1,4 @@
-package notesModel
+package models
 
 import (
 	"time"
@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-var Collection *mongo.Collection
+var NotesCollection *mongo.Collection
 
 type Note struct {
 	ID			primitive.ObjectID	`bson:"_id"`
@@ -18,5 +18,5 @@ type Note struct {
 }
 
 func init() {
-	Collection = db.Client.Database("stealer").Collection("notes")
+	NotesCollection = db.Client.Database("stealer").Collection("notes")
 }

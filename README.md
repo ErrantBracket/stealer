@@ -1,5 +1,5 @@
 # stealer
-This is an attempt to re-write a recent project built with Node.js and Mongo in Golang. 
+This is an attempt to re-write a recent project built with Node.js and Mongo in Golang and Mongo. 
 The subject of the project has changed but I have aimed to keep the same structure. 
 
 

@@ -3,6 +3,7 @@ package config
 import (
 	notesController "github.com/ErrantBracket/stealer/controllers/notes"
 	topicsController "github.com/ErrantBracket/stealer/controllers/topics"
+	keywordsController "github.com/ErrantBracket/stealer/controllers/keywords"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -20,6 +21,13 @@ func registerNoteRoutes(router fiber.Router) {
 	
 	note.Get("/", notesController.GetAllNotes)
 	note.Post("/", notesController.CreateNote)
+}
+
+// Register the routes for Topics
+func registerKeywordRoutes(router fiber.Router) {
+	topic := api.Group("/keywords")
+
+	topic.Get("/", keywordsController.GetAllKeywords)
 }
 
 // Register the routes for Topics
