@@ -3,7 +3,6 @@ package models
 import (
 	"time"
 
-	"github.com/ErrantBracket/stealer/db"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -17,6 +16,3 @@ type Note struct {
 	Title		string				`bson:"title"`
 }
 
-func init() {
-	NotesCollection = db.Client.Database("stealer").Collection("notes")
-}

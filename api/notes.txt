@@ -9,3 +9,20 @@ https://docs.gofiber.io/api/middleware/logger
 
 How To Use Go with MongoDB Using the MongoDB Go Driver
 https://www.digitalocean.com/community/tutorials/how-to-use-go-with-mongodb-using-the-mongodb-go-driver
+
+Modeling Documents with Go Data Structures
+https://www.mongodb.com/blog/post/quick-start-golang--mongodb--modeling-documents-with-go-data-structures
+
+Build a Go REST API with Fiber and MongoDB 
+https://dev.to/mikefmeyer/build-a-go-rest-api-with-fiber-and-mongodb-44og
+https://github.com/MikeFMeyer/catchphrase-go-mongodb-rest-api
+
+docker-compose build
+
+docker exec -it mongo-stealer bash
+mongosh
+show dbs
+use stealer
+show collections
+db.keywords.find()
+

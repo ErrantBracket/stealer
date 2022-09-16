@@ -10,7 +10,7 @@ services:
       - mongo
     environment:
       PORT: "3000"
-      DB_URL: "mongodb://mongo:27017/note-taker"
+      DB_URL: "mongodb://mongo:27017"
   mongo:
     container_name: mongo-stealer
     image: mongo
