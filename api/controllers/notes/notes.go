@@ -1,23 +1,27 @@
+/*
+*	
+*
+*/
 package notesController
 
 import (
 	"context"
-	"strconv"
+	"fmt"
 	"strings"
+	"strconv"
 	"time"
 
 	"github.com/ErrantBracket/stealer/db"
-	notesModel "github.com/ErrantBracket/stealer/models"
-	keywordsController "github.com/ErrantBracket/stealer/controllers/keywords"
+	keywordsModel 	"github.com/ErrantBracket/stealer/models"
+	notesModel 		"github.com/ErrantBracket/stealer/models"
+	keywordsController 	"github.com/ErrantBracket/stealer/controllers/keywords"
+	topicsController 	"github.com/ErrantBracket/stealer/controllers/topics"
 	"github.com/gofiber/fiber/v2"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
-
-type Note struct {
-	Note string `json:"note"`
-}
 
 func GetAllNotes(c *fiber.Ctx) error {
 	filter := bson.D{{}}
@@ -28,15 +32,49 @@ func GetAllNotes(c *fiber.Ctx) error {
 	return c.SendString("PUT: Hello World " + strconv.Itoa(len(notes)))
 }
 
+/*
+* Create a new Note instance
+* POST	/notes
+* 		TopicId:	String representation of Mongo _id for related topic
+*		Note:		String
+*
+* Check that topic exists
+* Insert note
+* Parse note for keywords
+* return _id for new note entry 
+*/
 func CreateNote(c *fiber.Ctx) error {
-	//_, err := notes.Collection.InsertOne(db.Ctx, note)
-	n := new(Note)
+	notesCollection := db.DB.Collection("notes")
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	// Create a new Note instance
+	// The value for Note.TopidId, and Note.Note is parsed using BodyParser
+	n := new(notesModel.Note)
 	if err := c.BodyParser(n); err != nil {
 		return err
 	}
-	sanitiseNote(n)
+	n.ID = primitive.NewObjectID()
+	n.CreatedAt = time.Now()
+	n.UpdatedAt = time.Now()
+	n.Deleted = false
+
+	// Check Topic is valid and append note ID to reference
+	topic := topicsController.GetTopicById(n.TopicId)
+	if topic == nil {
+		return c.SendStatus(404)
+	} else {
+		topicsController.AddNoteIdToTopic(n.TopicId, n.ID)
+	}
+
+	result, err := notesCollection.InsertOne(ctx, n)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		checkNoteForKeywords(n.Note, n.ID)
+		fmt.Println(result)
+	}
 	
-	return c.SendString("PUT: Hello World")
+	return c.SendString(n.ID.String())
 }
 
 
@@ -71,29 +109,26 @@ func filterNotes(filter interface{}) ([]*notesModel.Note, error) {
 	return notes, nil
 }
 
-func sanitiseNote(note *Note) string {
-
-	// Check if there is even a possible keyword contained in <note>
-	if strings.Index(note.Note, keywordsController.KeywordStart) == -1 || strings.Index(note.Note, keywordsController.KeywordEnd) == -1 {
-		return note.Note
+/*
+* Parse a string for keywords
+* Keywords are added to a slice and passed to be added to the database
+*/
+func checkNoteForKeywords(note string, id primitive.ObjectID) {
+	if strings.Contains(note, keywordsModel.KeywordStart) && strings.Contains(note, keywordsModel.KeywordEnd) {
+		var keywords []string
+		
+		// Loop over the string while we find the start of a keyword marker
+		for kws := strings.Index(note, keywordsModel.KeywordStart); kws != -1; kws =  strings.Index(note, keywordsModel.KeywordStart) {
+			note = note[kws+2:]
+			kwe := strings.Index(note, keywordsModel.KeywordEnd)
+			keywords = append(keywords, note[:kwe])
+			note = note[2:]	
+		}
+		fmt.Println(keywords)
+		
+		// If we have any keyword entries then add them
+		if len(keywords) > 0 {
+			keywordsController.AddNewKeywords(keywords, id)
+		}
 	}
-
-	var keywords []string
-	var cleanString string
-
-	// We must have at least one keyword template match
-	//kws := strings.Index(note, keywordStart)
-	for kws := strings.Index(note.Note, keywordsController.KeywordStart); kws != -1; kws =  strings.Index(note.Note, keywordsController.KeywordStart) {
-		cleanString = cleanString + note.Note[:kws]
-		note.Note = note.Note[kws+2:]
-		kwe := strings.Index(note.Note, keywordsController.KeywordEnd)
-		keywords = append(keywords, note.Note[:kwe])
-		note.Note = note.Note[kwe+2:]	
-	}
-	cleanString = cleanString + note.Note
-	//fmt.Println(keywords)
-	//fmt.Println(cleanString)
-	keywordsController.AddNewKeywords(keywords)
-	
-	return cleanString
 }

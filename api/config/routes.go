@@ -36,5 +36,6 @@ func registerKeywordRoutes(router fiber.Router) {
 func registerTopicRoutes(router fiber.Router) {
 	topic := api.Group("/topics")
 
+	topic.Post("/", topicsController.AddNewTopic)
 	topic.Get("/", topicsController.GetAllTopics)
 }

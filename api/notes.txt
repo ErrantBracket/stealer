@@ -26,3 +26,13 @@ use stealer
 show collections
 db.keywords.find()
 
+db.keywords.deleteMany({})
+
+docker run -d --rm -v data:/data/db -p 27107:27017 mongo:latest
+
+
+Topic
+    Note
+        keyword
+        ...
+    ...
