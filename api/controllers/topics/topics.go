@@ -148,7 +148,7 @@ func GetNextSequence(id primitive.ObjectID) (error, int) {
 		log.Fatal(err)
 	}
 
-	fmt.Println(sequenceInfo)
+	fmt.Println(sequenceInfo) // [map[sequence:4]]
 	iter := reflect.ValueOf(sequenceInfo).MapRange()
 	for iter.Next() {
 		k := iter.Key().Interface()
