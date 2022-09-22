@@ -12,7 +12,10 @@ import (
 
 
 func main() {
-	config.GetEnvironment()
+	err := config.GetEnvironment()
+	if err != nil {
+		
+	}
 	
 	app := fiber.New()
 	app.Use(logger.New())
@@ -22,7 +25,7 @@ func main() {
 	// Run the route definitions in config > routes.go
 	config.RegisterRoutes(app)
 
-	err := app.Listen(":" + config.Port)
+	err = app.Listen(":" + config.Port)
 	if err != nil {
 		log.Fatal("App failed to start")
 	}

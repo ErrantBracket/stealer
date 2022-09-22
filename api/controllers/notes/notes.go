@@ -23,6 +23,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+type AddNote struct {
+	TopicId		primitive.ObjectID	`json:"topicId"`
+	Note		string				`json:"note"`
+}
+
 func GetAllNotes(c *fiber.Ctx) error {
 	filter := bson.D{{}}
 	notes, err := filterNotes(filter)
@@ -35,46 +40,61 @@ func GetAllNotes(c *fiber.Ctx) error {
 /*
 * Create a new Note instance
 * POST	/notes
-* 		TopicId:	String representation of Mongo _id for related topic
-*		Note:		String
+* 		topicId:	String representation of Mongo _id for related topic
+*		note:		String
 *
 * Check that topic exists
 * Insert note
 * Parse note for keywords
-* return _id for new note entry 
+* return topicId, note 
 */
-func CreateNote(c *fiber.Ctx) error {
-	notesCollection := db.DB.Collection("notes")
-	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+func AddNoteToTopic(c *fiber.Ctx) error {
+	// Create a new struct to hold JSON values (copied in BodyParser)
+	an := new(AddNote)
 
-	// Create a new Note instance
-	// The value for Note.TopidId, and Note.Note is parsed using BodyParser
+	// Create a new Note struct
 	n := new(notesModel.Note)
-	if err := c.BodyParser(n); err != nil {
-		return err
+
+	if err := c.BodyParser(an); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Cannot parse JSON",
+		})
 	}
-	n.ID = primitive.NewObjectID()
+	
+	n.Note = an.Note
 	n.CreatedAt = time.Now()
 	n.UpdatedAt = time.Now()
 	n.Deleted = false
 
-	// Check Topic is valid and append note ID to reference
-	topic := topicsController.GetTopicById(n.TopicId)
-	if topic == nil {
-		return c.SendStatus(404)
+	// Check Topic is valid and append note to referenced Topic
+	if topicsController.IsTopicValid(an.TopicId) {
+		err, seq := topicsController.GetNextSequence(an.TopicId)
+		if err != nil {
+			return c.Status(503).JSON(fiber.Map{
+				"error": err,
+			})
+		}
+		n.Sequence = seq
+		err = topicsController.AddNoteToTopic(an.TopicId, n)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+				"error": err,
+			})
+		}
 	} else {
-		topicsController.AddNoteIdToTopic(n.TopicId, n.ID)
+		return c.Status(404).JSON(fiber.Map{
+			"error": "topicId not found",
+		})
 	}
 
-	result, err := notesCollection.InsertOne(ctx, n)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		checkNoteForKeywords(n.Note, n.ID)
-		fmt.Println(result)
-	}
+	//checkNoteForKeywords(n.Note, n.ID)
+	//fmt.Println(result)
 	
-	return c.SendString(n.ID.String())
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"topicId": an.TopicId, 
+		"note": n.Note,
+		"sequence": n.Sequence,
+	})
 }
 
 

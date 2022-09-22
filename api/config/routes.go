@@ -21,7 +21,7 @@ func registerNoteRoutes(router fiber.Router) {
 	note := api.Group("/notes")
 	
 	note.Get("/", notesController.GetAllNotes)
-	note.Post("/", notesController.CreateNote)
+	note.Post("/", notesController.AddNoteToTopic)
 }
 
 // Register the routes for Keywords
@@ -36,6 +36,6 @@ func registerKeywordRoutes(router fiber.Router) {
 func registerTopicRoutes(router fiber.Router) {
 	topic := api.Group("/topics")
 
-	topic.Post("/", topicsController.AddNewTopic)
+	topic.Post("/", topicsController.CreateNewTopic)
 	topic.Get("/", topicsController.GetAllTopics)
 }
