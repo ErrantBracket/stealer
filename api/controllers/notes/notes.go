@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/ErrantBracket/stealer/db"
-	keywordsModel 	"github.com/ErrantBracket/stealer/models"
-	notesModel 		"github.com/ErrantBracket/stealer/models"
+	keywordsModel 	    "github.com/ErrantBracket/stealer/models"
+	notesModel 		    "github.com/ErrantBracket/stealer/models"
 	keywordsController 	"github.com/ErrantBracket/stealer/controllers/keywords"
 	topicsController 	"github.com/ErrantBracket/stealer/controllers/topics"
 	"github.com/gofiber/fiber/v2"

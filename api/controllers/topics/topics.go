@@ -18,19 +18,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/ErrantBracket/stealer/db"
-	notesModel "github.com/ErrantBracket/stealer/models"
+	notesModel  "github.com/ErrantBracket/stealer/models"
 	topicsModel "github.com/ErrantBracket/stealer/models"
 )
 
 /*
+* Create a new entry in the topic collection
 *
-*
- */
+* POST
+* Topic		string
+*/
 func CreateNewTopic(c *fiber.Ctx) error {
 	topicsCollection := db.DB.Collection("topics")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	// Create a new Topic instance
 	// The value for Topic.Topic is parsed using BodyParser
 	t := new(topicsModel.Topic)
 	if err := c.BodyParser(t); err != nil {
@@ -39,6 +40,7 @@ func CreateNewTopic(c *fiber.Ctx) error {
 		})
 	}
 
+	// Set the initial values
 	t.ID = primitive.NewObjectID()
 	t.CreatedAt = time.Now()
 	t.UpdatedAt = time.Now()
@@ -52,26 +54,38 @@ func CreateNewTopic(c *fiber.Ctx) error {
 	}
 	
 	// Return the new topic _id
-	return c.SendString(t.ID.String())
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"_id": t.ID.String(),
+	})
 }
 
 
 /*
-*
-*
+* Return the topic specified by the given ID
+* GET /topics/:id
+* 
 */
-func GetTopicById(id primitive.ObjectID) (error, *topicsModel.Topic) {
-	fmt.Println("GetTopicById(" + id.String() + ")")
+func GetTopicById(c *fiber.Ctx) error {
+	id, err := primitive.ObjectIDFromHex(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}	
+
 	topicsCollection := db.DB.Collection("topics")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
 	var result *topicsModel.Topic
-	err := topicsCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
+	err = topicsCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
 	if err != nil {
-		return err, nil
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
 	}
-	fmt.Println("Topic " + result.Topic + " found (" + id.String() + ")")
-	return nil, result
+	//fmt.Println("Topic " + result.Topic + " found (" + id.String() + ")")
+	c.JSON(result)
+	return c.SendStatus(200)
 }
 
 
@@ -243,7 +257,7 @@ func GetAllTopics(c *fiber.Ctx) error {
 		}
 		results = append(results, result)
 	}
-	fmt.Println(results)
+	//fmt.Println(results)
 
 	c.JSON(results)
 	return c.SendStatus(200)
