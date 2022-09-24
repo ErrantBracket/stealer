@@ -68,17 +68,18 @@ func AddNoteToTopic(c *fiber.Ctx) error {
 
 	// Check Topic is valid and append note to referenced Topic
 	if topicsController.IsTopicValid(an.TopicId) {
-		err, seq := topicsController.GetNextSequence(an.TopicId)
+		seq, err := topicsController.GetNextSequence(an.TopicId)
 		if err != nil {
+			fmt.Println(err)
 			return c.Status(503).JSON(fiber.Map{
-				"error": err,
+				"error": err.Error(),
 			})
 		}
 		n.Sequence = seq
 		err = topicsController.AddNoteToTopic(an.TopicId, n)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-				"error": err,
+				"error": err.Error(),
 			})
 		}
 	} else {

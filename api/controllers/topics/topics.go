@@ -6,10 +6,8 @@ package topicsController
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
-	"reflect"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -114,52 +112,115 @@ func IsTopicValid(id primitive.ObjectID) bool {
 	if err != nil {
 		return false
 	}
-	fmt.Println("TopicId " + id.String() + " found")
+	//fmt.Println("TopicId " + id.String() + " found")
 	return true
 }
 
 
 /*
+* Get the highest sequence number + 1
+* Honestly this took me far too long to figure out and seems quite messy
+*
+* Based on the following Mongosh:
+* db.topics.aggregate( [ { $match:{"_id": ObjectId("6328d8083c35cf86c59bcdf1")}}, 
+*		{$unwind:"$notes"}, 
+*		{$set: {sequence: "$notes.sequence"}}, 
+*		{$sort:{"sequence":-1}}, 
+*		{$limit: 1}, 
+*		{$project: {"_id":0, "sequence":1}} ])
 *
 *
+* Get a count of the number of notes subdocuments
+* - If zero, then return 1 as the next sequence
+* 
 */
-func GetNextSequence(id primitive.ObjectID) (error, int) {
+func GetNextSequence(id primitive.ObjectID) (int, error) {
+	num, err := GetNoteCount(id)
+	if err != nil {
+		return 0, err
+	}
+
+	if num == 0 {
+		return 1, nil
+	}
+
 	topicsCollection := db.DB.Collection("topics")
 	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
 
-	//var result *topicsModel.TopicSequenceOnly
-
+	// Get the topic with a matching _id
 	matchStage   := bson.D{{"$match", bson.D{{"_id", id}}}}
+	// Deconstruct an array field to a document for each instance of Notes
 	unwindStage  := bson.D{{"$unwind", "$notes"}}
-	replaceRoot  := bson.D{{"$replaceRoot", bson.D{{"newRoot", "$notes"}}}}
+	// Create a new field copied from the subdocument
+	setStage 	 := bson.D{{"$set", bson.M{"sequence": "$notes.sequence"}}}
+	// Sort by sequence (descending)
 	sortStage    := bson.D{{"$sort", bson.M{"sequence": -1}}}
+	// Give me 1 document only
 	limitStage   := bson.D{{"$limit", 1}}
+	// Give me the sequence field (_id is returned by default so we supress it)
 	projectStage := bson.D{{"$project", bson.M{"_id": 0, "sequence": 1}}}	
 	
-	cur, err := topicsCollection.Aggregate(ctx, mongo.Pipeline{matchStage, unwindStage, replaceRoot, sortStage, limitStage, projectStage})
+	cur, err := topicsCollection.Aggregate(ctx, mongo.Pipeline{matchStage, unwindStage, setStage, sortStage, limitStage, projectStage})
 	if err != nil {
 		log.Fatal(err)
 	}
-	
 
-	var sequenceInfo []bson.M
+	type Sequence2 struct {
+		Sequence	int			`bson:"sequence"`
+	}
+	type SequenceInfo struct {
+		Sequence 	Sequence2 	`bson:"inline,omitempty"`
+	}
 
+	//var sequenceInfo []bson.M
+	// [{"sequence": {"$numberInt":"4"}}]
+	// [map[sequence:4]]
+
+	var sequenceInfo []SequenceInfo
 	if err = cur.All(ctx, &sequenceInfo); err != nil {
 		log.Fatal(err)
 	}
+	//fmt.Println(sequenceInfo)  // [{{4}}]
 
-	fmt.Println(sequenceInfo) // [map[sequence:4]]
-	iter := reflect.ValueOf(sequenceInfo).MapRange()
-	for iter.Next() {
-		k := iter.Key().Interface()
-		v := iter.Value().Interface()
-		fmt.Println(k, v)
-	}
-
-	err = errors.New("Error")
-	return err, 0
+	seq := sequenceInfo[0].Sequence.Sequence
+	return seq + 1, err
 }
 
+/*
+*
+* Mongosh command:
+* db.topics.aggregate( [ {$match:{"_id": ObjectId("6328d8083c35cf86c59bcdf1")}}, 
+*		{$project: {numberOfNotes: {$size: "$notes"}}} ] )
+* 
+*/
+func GetNoteCount(id primitive.ObjectID) (int, error) {
+	topicsCollection := db.DB.Collection("topics")
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+
+	// Get the topic with a matching _id
+	matchStage   := bson.D{{"$match", bson.D{{"_id", id}}}}
+	// Give me the sequence field (_id is returned by default so we supress it)
+	projectStage := bson.D{{"$project", bson.D{{"numberOfNotes", bson.M{"$size": "$notes"}}}}}
+	
+	cur, err := topicsCollection.Aggregate(ctx, mongo.Pipeline{matchStage, projectStage})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	type NoteCount struct {
+		Id 		primitive.ObjectID	`bson:"_id"`
+		Num		int					`bson:"numberOfNotes"`
+	}
+
+	var noteCount []NoteCount
+	if err = cur.All(ctx, &noteCount); err != nil {
+		log.Fatal(err)
+	}
+
+	num := noteCount[0].Num
+	
+	return num, nil
+}
 
 /*
 *
